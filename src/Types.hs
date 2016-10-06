@@ -25,6 +25,9 @@ data Sprite
   | Hill Bounds Position
   deriving (Eq, Show)
 
+defaultCloud :: Sprite
+defaultCloud = Cloud (Bounds 100 20) (Position 300 100) (Velocity (-1) 0)
+
 defaultUser :: Sprite
 defaultUser = User (Bounds 20 20) (Position 100 100) mempty
 
@@ -70,8 +73,11 @@ velocity f s = update s
     Tree b p    -> pure $ Tree b p
     Hill b p    -> pure $ Hill b p 
 
+yv :: Lens' Velocity Int
+yv = lens (\(Velocity _ y) -> y) (\(Velocity x _) y -> Velocity x y)
+
 xv :: Lens' Velocity Int
-xv = lens (\(Velocity x _) -> x) (\(Velocity _ x) y -> Velocity x y)
+xv = lens (\(Velocity x _) -> x) (\(Velocity _ y) x -> Velocity x y)
 
 xp :: Lens' Position Float
 xp = lens (\(Position x _) -> fromIntegral x) (\(Position _ y) x -> Position (floor x) y)

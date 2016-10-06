@@ -7,6 +7,8 @@ module Logic
 import Data.Monoid
 import Lens.Micro
 import Types
+import Debug.Trace
+import Data.Maybe
 
 data Op
   = UpOp
@@ -86,14 +88,21 @@ collides sa sb
   | otherwise = True
 
 applyGravity :: Int -> Int -> Sprite -> Sprite
-applyGravity constant lowerBound = \case
-  User d p v
-    | lowerBound <= p^.bottom -> User d p $ ground v
-    | otherwise               -> User d p $ gravityVeloc constant v
-  x -> x
+applyGravity constant lowerBound s =
+  case s of
+    User _ _ _
+      | 0 >= s^.topRight.yp              -> s & velocity . yv %~ max 0
+      | lowerBound <= s^.position.bottom -> fromJust $ do
+          pure $ s & velocity %~ ground
+      | otherwise                        -> fromJust $ do
+          traceM "gravity"
+          traceM $ show lowerBound
+          traceM . show $ s^.position.bottom
+          pure $ s & velocity %~ gravityVeloc constant
+    x -> x
 
 gravityVeloc :: Int -> Velocity -> Velocity
-gravityVeloc constant (Velocity x y) = Velocity x $ y + constant
+gravityVeloc constant v = v & yv %~ (+ constant)
 
 applyFriction :: Int -> Sprite -> Sprite
 applyFriction constant s = case s of
@@ -106,15 +115,15 @@ applyFriction constant s = case s of
     | otherwise = x
 
 ground :: Velocity -> Velocity
-ground (Velocity x _) = Velocity x 0
+ground = yv %~ min 0
 
 wall :: Velocity -> Velocity
-wall (Velocity _ y) = Velocity 0 y
+wall = xv .~ 0
 
 advanceSprite :: Velocity -> Sprite -> Sprite
 advanceSprite characterV s = case s of
   User _ _ _  -> s & position %~ applyVeloc (wall characterV)
-  _           -> s & position %~ applyVeloc (ground characterV)
+  _           -> s & position %~ applyVeloc (characterV & yv .~ 0 & xv %~ negate)
                                . maybe id applyVeloc (s ^? velocity)
 
 applyVeloc :: Velocity -> Position -> Position
@@ -123,32 +132,30 @@ applyVeloc (Velocity vx vy) (Position x y) = Position (x + vx) (y + vy)
 operationVelocity :: Op -> Velocity -> Velocity
 operationVelocity op v@(Velocity x y) =
   case op of
-    UpOp -> Velocity x $ min (y - 6) 25
-    RightOp -> (Velocity (min (x + 2) 25) y)
-    DownOp -> v
-    LeftOp -> (Velocity (max (x - 2) (-25)) y)
+    UpOp -> Velocity x $ max (y - 2) (-12)
+    DownOp -> Velocity x $ min (y + 4) 12
+    RightOp -> Velocity (min (x + 2) 12) y
+    LeftOp -> Velocity (max (x - 2) (-12)) y
     NoOp -> v
 
 nextTick :: [Op] -> Scene -> Scene
-nextTick op scene =
-  scene { foreground = fmap (next []) $ foreground scene
-        , character = next s c
-        , stage = fmap (next [c]) s
-        , background = fmap (next []) $ background scene
+nextTick op scene@Scene{..} =
+  scene { foreground = fmap (next []) $ foreground
+        , character =
+            applyFriction friction
+            . applyGravity gravity screenHeight
+            . next stage
+            $ character & velocity %~ foldMap operationVelocity op
+        , stage = fmap (next [character]) stage
+        , background = fmap (next []) background
         }
   where
-  c = character scene & velocity %~ foldMap operationVelocity op 
-  s = stage scene
-  User _ _ charV = c
+  Just charV = character^?velocity
 
   next :: [Sprite] -> Sprite -> Sprite
   next xs x =
-    if any (==True) (fmap (collides x) xs) then
-      x
-    else
-      advanceSprite charV
-        . applyFriction (friction scene)
-        $ applyGravity (gravity scene) (screenHeight scene) x
+    if any (==True) (fmap (collides x) xs) then x
+    else advanceSprite charV x
 
 drawScene :: Scene -> [Shape]
 drawScene Scene{..} =

@@ -2,7 +2,7 @@
 module Interpreter.JavaScript where
 
 import           Control.Monad.Trans
-import           Control.Monad (void)
+import           Control.Monad (void, when)
 import           Data.IORef
 import           Data.Foldable
 import           Data.Set (Set)
@@ -12,6 +12,7 @@ import           GHCJS.DOM.Types hiding (Rect)
 import           GHCJS.DOM (currentDocument)
 import           GHCJS.DOM.JSFFI.Generated.Enums
 import           GHCJS.DOM.Node (appendChild)
+import           GHCJS.DOM.Element (setAttribute)
 import           GHCJS.DOM.EventM (on, uiKeyCode)
 import           GHCJS.DOM.Document (querySelector, keyUp, keyDown, createElement)
 import           GHCJS.DOM.HTMLCanvasElement
@@ -25,23 +26,37 @@ interpret :: Show a => (a -> Set Op -> (a, [Shape])) -> a -> IO ()
 interpret render seed = do
   Just doc <- currentDocument
   Just body <- querySelector doc "body"
-  Just canvas <- fmap castToHTMLCanvasElement <$> createElement doc (Just "canvas")
-  setWidth canvas 800
-  setHeight canvas 800
-  void . appendChild body . Just $ toElement canvas
   ops <- newIORef mempty
   void $ initListener doc ops
 
-  ctx <- CanvasRenderingContext2D <$> getContext canvas "2d"
-  let go state = do
+  canvasOff <- createCanvas doc
+  setAttribute canvasOff "style" "display:none"
+
+  canvasOn <- createCanvas doc
+
+  void . appendChild body . Just $ toElement canvasOff
+  void . appendChild body . Just $ toElement canvasOn
+
+  ctxOff <- CanvasRenderingContext2D <$> getContext canvasOff "2d"
+  ctxOn <- CanvasRenderingContext2D <$> getContext canvasOn "2d"
+
+  let go last state = do
         currentOps <- readIORef ops
         let (newState, shapes) = render state currentOps
-        forM_ shapes $ \x -> do
-          print x
-          interpretShape ctx x
+        when (last /= shapes) $ do
+          forM_ shapes $ \x -> do
+            interpretShape ctxOff x
+          drawImageFromCanvas ctxOn (Just canvasOff) 0 0
         void $ waitForAnimationFrame
-        go newState
-  go seed
+        go shapes newState
+  go [] seed
+
+createCanvas :: (MonadIO m, IsDocument self) => self -> m HTMLCanvasElement
+createCanvas doc = do
+  Just canvas <- fmap castToHTMLCanvasElement <$> createElement doc (Just "canvas")
+  setWidth canvas 800
+  setHeight canvas 800
+  pure canvas
 
 interpretShape :: CanvasRenderingContext2D -> Shape -> IO ()
 interpretShape ctx = \case
