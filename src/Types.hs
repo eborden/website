@@ -4,7 +4,7 @@ module Types where
 
 import Lens.Micro
 
-(*~) :: Int -> Double -> Int
+(*~) :: Int -> Float -> Int
 x *~ y = round $ fromIntegral x * y
 
 type Point = (Int, Int)
@@ -73,10 +73,10 @@ velocity f s = update s
 xv :: Lens' Velocity Int
 xv = lens (\(Velocity x _) -> x) (\(Velocity _ x) y -> Velocity x y)
 
-xp :: Lens' Position Double
+xp :: Lens' Position Float
 xp = lens (\(Position x _) -> fromIntegral x) (\(Position _ y) x -> Position (floor x) y)
 
-yp :: Lens' Position Double
+yp :: Lens' Position Float
 yp = lens (\(Position _ y) -> fromIntegral y) (\(Position x _) y -> Position x (floor y))
 
 left :: Lens' Position Int
@@ -107,8 +107,12 @@ topLeft = lens get' set'
   set' s p = s & position %~ set left (p^.left)
                            . set (top (s^.bounds)) (p^.bottom)
 
-topRight :: Bounds -> Position -> (Int, Int)
-topRight b p = (p^.right b, p^.top b)
+topRight :: Lens' Sprite Position
+topRight = lens get' set'
+  where
+  get' s = Position (s^.position . right (s^.bounds)) (s^.position.top (s^.bounds))
+  set' s p = s & position %~ set (right (s^.bounds)) (p^.left)
+                           . set (top (s^.bounds)) (p^.bottom)
 
 bottomLeft :: Lens' Sprite Position -- Position -> (Int, Int)
 bottomLeft = lens get' set'
@@ -119,7 +123,7 @@ bottomLeft = lens get' set'
 bottomRight :: Lens' Sprite Position
 bottomRight = lens get' set'
   where
-  get' s = Position (s^.position . left) (s^.position.top (s^.bounds))
+  get' s = Position (s^.position . right (s^.bounds)) (s^.position.bottom)
   set' s p = s & position %~ set (right (s^.bounds)) (p^.left)
                            . set bottom (p^.bottom)
 

@@ -14,6 +14,7 @@ data Op
   | DownOp
   | LeftOp
   | NoOp
+  deriving (Eq, Ord)
 
 data Scene
   = Scene
@@ -27,10 +28,10 @@ data Scene
   , friction     :: Int
   } deriving (Show, Eq)
 
-addHeight :: Sprite -> Double -> Int -> Int
+addHeight :: Sprite -> Float -> Int -> Int
 addHeight s m x = ((s^.bounds&height) *~ m) + x
 
-addWidth :: Sprite -> Double -> Int -> Int
+addWidth :: Sprite -> Float -> Int -> Int
 addWidth s m x = ((s^.bounds&width) *~ m) + x
 
 draw :: Sprite -> [Shape]
@@ -38,19 +39,19 @@ draw s = case s of
   User b _ (Velocity x _)
     -- front
     | x == 0    -> [ Fill 50 50 50
-                   $ RoundedRect (s^.topLeft) (s^.bottomRight) 10 ]
+                   $ RoundedRect (s^.topLeft) (s^.bottomRight) 6 ]
     -- right
     | x > 0     -> [ Fill 50 50 50
                    $ RoundedRect
                       (s^.topLeft)
                       (s^.bottomRight & right b %~ addWidth s (-0.1))
-                      10]
+                      6]
     -- left
     | otherwise -> [ Fill 50 50 50
                    $ RoundedRect
                       (s^.topLeft & left %~ addWidth s 0.1)
                       (s^.bottomRight)
-                      10]
+                      6]
 
   Leaf _ _ _ ->
     [ Fill 255 0 0 $ RoundedRect (s^.topLeft) (s^.bottomRight) 10 ]
@@ -87,7 +88,7 @@ collides sa sb
 applyGravity :: Int -> Int -> Sprite -> Sprite
 applyGravity constant lowerBound = \case
   User d p v
-    | lowerBound == p^.bottom -> User d p $ ground v
+    | lowerBound <= p^.bottom -> User d p $ ground v
     | otherwise               -> User d p $ gravityVeloc constant v
   x -> x
 

@@ -1,25 +1,17 @@
 module Main where
 
-import Logic
-import Types
+import Data.Foldable
 import Interpreter.JavaScript
+import Logic
 
 main :: IO ()
 main = do
-  interpreter <- interpret
-  interpreter . drawScene
-    . nextTick []
-    . nextTick []
-    . nextTick []
-    . nextTick []
-    . nextTick [RightOp]
-    . nextTick [RightOp]
-    . nextTick [RightOp]
-    . nextTick [RightOp]
-    . nextTick [RightOp]
+  interpret step
     $ Scene
       []
       defaultUser
       []
       []
       800 800 4 1
+  where
+  step x op = let n = nextTick (toList op) x in (n, drawScene x)

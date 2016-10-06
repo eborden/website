@@ -21,7 +21,10 @@ library
                      , Interpreter.JavaScript
   build-depends:       base >= 4.7 && < 5
                      , ghcjs-base
+                     , ghcjs-dom
                      , microlens
+                     , mtl
+                     , containers
   default-language:    Haskell2010
 
 executable website-output
