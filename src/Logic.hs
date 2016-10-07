@@ -7,8 +7,6 @@ module Logic
 import Data.Monoid
 import Lens.Micro
 import Types
-import Debug.Trace
-import Data.Maybe
 
 data Op
   = UpOp
@@ -16,7 +14,7 @@ data Op
   | DownOp
   | LeftOp
   | NoOp
-  deriving (Eq, Ord)
+  deriving (Show, Eq, Ord)
 
 data Scene
   = Scene
@@ -92,17 +90,12 @@ applyGravity constant lowerBound s =
   case s of
     User _ _ _
       | 0 >= s^.topRight.yp              -> s & velocity . yv %~ max 0
-      | lowerBound <= s^.position.bottom -> fromJust $ do
-          pure $ s & velocity %~ ground
-      | otherwise                        -> fromJust $ do
-          traceM "gravity"
-          traceM $ show lowerBound
-          traceM . show $ s^.position.bottom
-          pure $ s & velocity %~ gravityVeloc constant
+      | lowerBound <= s^.position.bottom -> s & velocity %~ ground
+      | otherwise                        -> s & velocity %~ gravityVeloc constant
     x -> x
 
 gravityVeloc :: Int -> Velocity -> Velocity
-gravityVeloc constant v = v & yv %~ (+ constant)
+gravityVeloc constant v = v & yv %~ min 20 . (+ constant)
 
 applyFriction :: Int -> Sprite -> Sprite
 applyFriction constant s = case s of
@@ -130,22 +123,22 @@ applyVeloc :: Velocity -> Position -> Position
 applyVeloc (Velocity vx vy) (Position x y) = Position (x + vx) (y + vy)
 
 operationVelocity :: Op -> Velocity -> Velocity
-operationVelocity op v@(Velocity x y) =
+operationVelocity op v =
   case op of
-    UpOp -> Velocity x $ max (y - 2) (-12)
-    DownOp -> Velocity x $ min (y + 4) 12
-    RightOp -> Velocity (min (x + 2) 12) y
-    LeftOp -> Velocity (max (x - 2) (-12)) y
+    UpOp -> v & yv %~ max (-12) . subtract 2
+    DownOp -> v & yv %~ min 12 . (+ 4)
+    RightOp -> v & xv %~ min 12 . (+ 2)
+    LeftOp ->  v & xv %~ max (-12) . subtract 2
     NoOp -> v
 
 nextTick :: [Op] -> Scene -> Scene
 nextTick op scene@Scene{..} =
   scene { foreground = fmap (next []) $ foreground
-        , character =
-            applyFriction friction
+        , character
+            = applyFriction friction
             . applyGravity gravity screenHeight
             . next stage
-            $ character & velocity %~ foldMap operationVelocity op
+            $ character & velocity %~ \xs -> foldr operationVelocity xs op
         , stage = fmap (next [character]) stage
         , background = fmap (next []) background
         }

@@ -28,6 +28,12 @@ data Sprite
 defaultCloud :: Sprite
 defaultCloud = Cloud (Bounds 100 20) (Position 300 100) (Velocity (-1) 0)
 
+defaultHill :: Sprite
+defaultHill = Hill (Bounds 400 100) (Position 100 800)
+
+defaultTree :: Sprite
+defaultTree = Tree (Bounds 20 100) (Position 600 800)
+
 defaultUser :: Sprite
 defaultUser = User (Bounds 20 20) (Position 100 100) mempty
 

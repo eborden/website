@@ -12,7 +12,9 @@ main = do
       [defaultCloud]
       defaultUser
       []
-      []
+      [defaultHill]
       800 800 1 1
   where
-  step x op = let n = nextTick (toList op) x in (n, drawScene x)
+  step x op =
+    let n = nextTick (toList op) x
+    in (n, drawScene x)

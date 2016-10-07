@@ -44,8 +44,7 @@ interpret render seed = do
         currentOps <- readIORef ops
         let (newState, shapes) = render state currentOps
         when (last /= shapes) $ do
-          forM_ shapes $ \x -> do
-            interpretShape ctxOff x
+          forM_ shapes $ interpretShape ctxOff
           drawImageFromCanvas ctxOn (Just canvasOff) 0 0
         void $ waitForAnimationFrame
         go shapes newState
@@ -91,15 +90,15 @@ interpretShape ctx = \case
 
 initListener :: Document -> IORef (Set Op) -> IO (IO ())
 initListener doc ref = do
-  cancel <- on doc keyDown $ do
+  cancelDown <- on doc keyDown $ do
     op <- keyCodeToOp <$> uiKeyCode
     forM_ op $ \x ->
       liftIO $ modifyIORef' ref $ Set.insert x
-  cancel' <- on doc keyUp $ do
+  cancelUp <- on doc keyUp $ do
     op <- keyCodeToOp <$> uiKeyCode
     forM_ op $ \x ->
       liftIO $ modifyIORef' ref $ Set.delete x
-  pure $ cancel >> cancel'
+  pure $ cancelDown >> cancelUp
 
 keyCodeToOp :: Int -> Maybe Op
 keyCodeToOp = \case
