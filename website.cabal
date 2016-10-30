@@ -25,6 +25,7 @@ library
                      , microlens
                      , mtl
                      , containers
+                     , random
   default-language:    Haskell2010
 
 executable website-output
@@ -33,6 +34,7 @@ executable website-output
   ghc-options:         -Wall -O2
   build-depends:       base
                      , website
+                     , random
   default-language:    Haskell2010
 
 source-repository head

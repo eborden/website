@@ -4,6 +4,7 @@
 module Types where
 
 import Lens.Micro
+import System.Random
 
 (*~) :: Int -> Float -> Int
 x *~ y = round $ fromIntegral x * y
@@ -20,67 +21,116 @@ instance Monoid Velocity where
 
 data Position = Position !Int !Int deriving (Eq, Ord, Show)
 
+type RGB = (Int, Int, Int)
+
+colors :: [RGB]
+colors =
+  [ (243, 211, 12)
+  , (88, 134, 64)
+  , (225, 81, 44)
+  , (184, 104, 33)
+  ]
+
+randomColor :: StdGen -> (RGB, StdGen)
+randomColor g =
+  let (i, newGen) = randomR (0, length colors - 1) g
+  in (colors !! i, newGen)
+
 data Sprite
   = User !Bounds !Position !Velocity
-  | Leaf !Bounds !Position !Velocity
+  | Leaf !Bounds !Position RGB !Velocity
   | Cloud !Bounds !Position !Velocity
-  | Tree !Bounds !Position
-  | Hill !Bounds !Position
+  | Tree !Bounds !Position RGB
+  | Hill !Bounds !Position RGB
   deriving (Eq, Show)
 
-defaultCloud :: Sprite
-defaultCloud = Cloud (Bounds 100 20) (Position 300 100) (Velocity (-1) 0)
+randomCloud :: StdGen -> (Sprite, StdGen)
+randomCloud g =
+  let (x, g') = randomR (0, 3600) g
+      (y, g'') = randomR (40, 400) g'
+      (w, g''') = randomR (100, 200) g''
+      (h, g'''') = randomR (20, 40) g'''
+      (vx, newGen) = randomR (-1, -2) g''''
+      b = Bounds w h
+      p = Position x y
+      v = Velocity vx 0
+   in (Cloud b p v, newGen)
 
-defaultHill :: Sprite
-defaultHill = Hill (Bounds 400 100) (Position 100 800)
+randomHill :: StdGen -> (Sprite, StdGen)
+randomHill g =
+  let (x, g') = randomR (0, 3600) g
+      (w, g'') = randomR (300, 500) g'
+      (c, g''') = randomColor g''
+      (h, newGen) = randomR (70, 100) g'''
+      b = Bounds w h
+      p = Position x 800
+   in (Hill b p c, newGen)
 
-defaultTree :: Sprite
-defaultTree = Tree (Bounds 20 100) (Position 600 800)
+randomTree :: StdGen -> (Sprite, StdGen)
+randomTree g =
+  let (x, g') = randomR (0, 3600) g
+      (w, g'') = randomR (30, 40) g'
+      (h, g''') = randomR (100, 120) g''
+      (c, newGen) = randomColor g'''
+      b = Bounds w h
+      p = Position x 800
+   in (Tree b p c, newGen)
 
 defaultUser :: Sprite
-defaultUser = User (Bounds 20 20) (Position 100 100) mempty
+defaultUser = User (Bounds 24 30) (Position 100 100) mempty
+
+randomLeaf :: StdGen -> (Sprite, StdGen)
+randomLeaf g =
+  let (x, g') = randomR (0, 3600) g
+      (y, g'') = randomR (600, 790) g'
+      (c, g''') = randomColor g''
+      (vx, newGen) = randomR (-1, -2) g'''
+      b = Bounds 5 5
+      p = Position x y
+      v = Velocity vx 0
+   in (Leaf b p c v, newGen)
 
 bounds :: Lens' Sprite Bounds
 bounds = lens get' set'
   where
   get' = \case
-    User b _ _  -> b
-    Leaf b _ _  -> b
-    Cloud b _ _ -> b
-    Tree b _    -> b
-    Hill b _    -> b
+    User b _ _   -> b
+    Leaf b _ _ _ -> b
+    Cloud b _ _  -> b
+    Tree b _ _   -> b
+    Hill b _ _   -> b
   set' x b = case x of
-    User _ p v  -> User b p v
-    Leaf _ p v  -> Leaf b p v
-    Cloud _ p v -> Cloud b p v
-    Tree _ p    -> Tree b p
-    Hill _ p    -> Hill b p 
+    User _ p v   -> User b p v
+    Leaf _ p c v -> Leaf b p c v
+    Cloud _ p v  -> Cloud b p v
+    Tree _ p c   -> Tree b p c
+    Hill _ p c   -> Hill b p c
 
 position :: Lens' Sprite Position
 position = lens get' set'
   where
   get' = \case
-    User _ p _  -> p
-    Leaf _ p _  -> p
-    Cloud _ p _ -> p
-    Tree _ p    -> p
-    Hill _ p    -> p
+    User _ p _   -> p
+    Leaf _ p _ _ -> p
+    Cloud _ p _  -> p
+    Tree _ p _   -> p
+    Hill _ p _   -> p
   set' x p = case x of
-    User b _ v  -> User b p v
-    Leaf b _ v  -> Leaf b p v
-    Cloud b _ v -> Cloud b p v
-    Tree b _    -> Tree b p
-    Hill b _    -> Hill b p 
+    User b _ v   -> User b p v
+    Leaf b _ c v -> Leaf b p c v
+    Cloud b _ v  -> Cloud b p v
+    Tree b _ c   -> Tree b p c
+    Hill b _ c   -> Hill b p c
 
 velocity :: Traversal' Sprite Velocity
 velocity f s = update s
   where
   update = \case
-    User b p v  -> User b p <$> f v
-    Leaf b p v  -> Leaf b p <$> f v
-    Cloud b p v -> Cloud b p <$> f v
-    Tree b p    -> pure $ Tree b p
-    Hill b p    -> pure $ Hill b p 
+    User b p v   -> User b p <$> f v
+    Leaf b p c v -> Leaf b p c <$> f v
+    Cloud b p v  -> Cloud b p <$> f v
+    Tree b p c   -> pure $ Tree b p c
+    Hill b p c   -> pure $ Hill b p c
 
 yv :: Lens' Velocity Int
 yv = lens (\(Velocity _ y) -> y) (\(Velocity x _) y -> Velocity x y)
@@ -101,7 +151,7 @@ right :: Bounds -> Lens' Position Int
 right (Bounds w _) = lens get' set'
   where
   get' p = p^.left + w
-  set' p s = p & left .~ (s + w)
+  set' p s = p & left .~ (s - w)
 
 bottom :: Lens' Position Int
 bottom = lens get' set'
@@ -113,7 +163,7 @@ top :: Bounds -> Lens' Position Int
 top (Bounds _ h) = lens get' set'
   where
   get' p = p^.bottom - h
-  set' p s = p & bottom .~ (s - h)
+  set' p s = p & bottom .~ (s + h)
 
 topLeft :: Lens' Sprite Position
 topLeft = lens get' set'

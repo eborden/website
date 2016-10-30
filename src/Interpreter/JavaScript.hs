@@ -69,7 +69,7 @@ interpretShape ctx = \case
     beginPath ctx
     moveTo ctx (x^.xp + rad) (x^.yp)
     lineTo ctx (y^.xp - rad) (x^.yp)
-    quadraticCurveTo ctx (y^.xp) (y^.yp) (y^.xp) (x^.yp + rad)
+    quadraticCurveTo ctx (y^.xp) (x^.yp) (y^.xp) (x^.yp + rad)
 
     lineTo ctx (y^.xp) (y^.yp - rad)
     quadraticCurveTo ctx (y^.xp) (y^.yp) (y^.xp - rad) (y^.yp)

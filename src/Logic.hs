@@ -29,7 +29,7 @@ data Scene
   } deriving (Show, Eq)
 
 addHeight :: Sprite -> Float -> Int -> Int
-addHeight s m x = ((s^.bounds&height) *~ m) + x
+addHeight s m y = ((s^.bounds&height) *~ m) + y
 
 addWidth :: Sprite -> Float -> Int -> Int
 addWidth s m x = ((s^.bounds&width) *~ m) + x
@@ -38,52 +38,128 @@ draw :: Sprite -> [Shape]
 draw s = case s of
   User b _ (Velocity x _)
     -- front
-    | x == 0    -> [ Fill 50 50 50
-                   $ RoundedRect (s^.topLeft) (s^.bottomRight) 6 ]
+    | x == 0    ->
+      [ Fill 102 88 73
+      $ RoundedRect
+          (s^.topLeft & top b %~ addHeight s (-0.1))
+          (s^.topLeft & bottom %~ addHeight s 0.2
+                      & left %~ addWidth s 0.3)
+          3
+      , Fill 102 88 73
+      $ RoundedRect
+          (s^.topRight & top b %~ addHeight s (-0.1)
+                       & right b %~ addWidth s (-0.3))
+          (s^.topRight & bottom %~ addHeight s 0.2)
+          3
+      , Fill 102 88 73
+      $ RoundedRect
+          (s^.topLeft)
+          (s^.topRight & top b %~ addHeight s 0.333)
+          3
+      , Fill 219 183 132
+      $ RoundedRect
+          (s^.topLeft & top b %~ addHeight s 0.1
+                      & left %~ addWidth s 0.1)
+          (s^.topRight & top b %~ addHeight s 0.333
+                       & right b %~ addWidth s (-0.1))
+          3
+      , Fill 102 88 73
+      $ RoundedRect
+          (s^.topLeft & top b %~ addHeight s 0.333
+                      & left %~ addWidth s 0.1)
+          (s^.bottomRight & right b %~ addWidth s (-0.1))
+          6
+      ]
     -- right
-    | x > 0     -> [ Fill 50 50 50
-                   $ RoundedRect
-                      (s^.topLeft)
-                      (s^.bottomRight & right b %~ addWidth s (-0.1))
-                      6]
+    | x > 0     ->
+      [ Fill 102 88 73
+      $ RoundedRect
+          (s^.topLeft & top b %~ addHeight s (-0.1)
+                      & left %~ addWidth s 0.2)
+          (s^.topLeft & bottom %~ addHeight s 0.2
+                      & left %~ addWidth s 0.5)
+          3
+      , Fill 102 88 73
+      $ RoundedRect
+          (s^.topLeft)
+          (s^.topRight & top b %~ addHeight s 0.333)
+          3
+      , Fill 219 183 132
+      $ RoundedRect
+          (s^.topLeft & top b %~ addHeight s 0.1
+                      & left %~ addWidth s 0.3)
+          (s^.topRight & top b %~ addHeight s 0.333)
+          3
+      , Fill 102 88 73
+      $ RoundedRect
+          (s^.topLeft & top b %~ addHeight s 0.333
+                      & left %~ addWidth s 0.1)
+          (s^.bottomRight & right b %~ addWidth s (-0.1))
+          6
+      ]
     -- left
-    | otherwise -> [ Fill 50 50 50
-                   $ RoundedRect
-                      (s^.topLeft & left %~ addWidth s 0.1)
-                      (s^.bottomRight)
-                      6]
+    | otherwise ->
+      [ Fill 102 88 73
+      $ RoundedRect
+          (s^.topRight & top b %~ addHeight s (-0.1)
+                       & right b %~ addWidth s (-0.2))
+          (s^.topRight & bottom %~ addHeight s 0.2
+                       & right b %~ addWidth s (-0.5))
+          3
+      , Fill 102 88 73
+      $ RoundedRect
+          (s^.topLeft)
+          (s^.topRight & top b %~ addHeight s 0.333)
+          3
+      , Fill 219 183 132
+      $ RoundedRect
+          (s^.topLeft & top b %~ addHeight s 0.1)
+          (s^.topRight & top b %~ addHeight s 0.333
+                       & right b %~ addWidth s (-0.3))
+          3
+      , Fill 102 88 73
+      $ RoundedRect
+          (s^.topLeft & top b %~ addHeight s 0.333
+                      & left %~ addWidth s 0.1)
+          (s^.bottomRight & right b %~ addWidth s (-0.1))
+          6
+      ]
 
-  Leaf _ _ _ ->
-    [ Fill 255 0 0 $ RoundedRect (s^.topLeft) (s^.bottomRight) 10 ]
+  Leaf _ _ (r, g, b) _ ->
+    [ Fill r g b $ RoundedRect (s^.topLeft) (s^.bottomRight) 10 ]
 
   Cloud b _ _ ->
     fmap (Fill 255 255 255)
-      [ RoundedRect (s^.bottomLeft & top b %~ addHeight s 0.4)
-      {- top -}     (s^.bottomRight)
+      [ RoundedRect (s^.topLeft & top b %~ addHeight s (0.3333))
+      {- bottom -}  (s^.bottomRight)
                     10
-      , RoundedRect (s^.topLeft & left %~ addWidth s 0.2)
-      {- bottom -}  (s^.bottomRight & right b %~ addWidth s (-0.2))
+      , RoundedRect (s^.topLeft & left %~ addWidth s 0.15)
+      {- top -}     (s^.bottomRight & right b %~ addWidth s (-0.15))
                     10
       ]
 
-  Tree b _ ->
-    [ Fill 139 69 19 $ Rect (s^.topLeft & left %~ addWidth s 0.3)
-                          (s^.bottomRight & right b %~ addWidth s (-0.4))
-    , Fill 34 139 34 $ RoundedRect (s^.topLeft)
-                                (s^.bottomRight & bottom %~ addHeight s (-0.2))
+  Tree b _ (r, g, b') ->
+    [ Fill 139 69 19 $ RoundedRect (s^.topLeft & left %~ addWidth s 0.333)
+                          (s^.bottomRight & right b %~ addWidth s (-0.3333))
+                          0
+    , Fill r g b' $ RoundedRect (s^.topLeft)
+                                (s^.bottomRight & bottom %~ addHeight s (-0.15))
                                 10
     ]
 
-  Hill b p ->
-    [ Fill 255 255 0 $ BezierCurve (s^.bottomLeft)
-                                  (s^.topLeft & left .~ fst (centerPoint b p))
-                                  (s^.bottomRight)
+  Hill b p (r, g, b') ->
+    [ Fill r g b' $ BezierCurve (s^.bottomLeft)
+                               (s^.topLeft & left .~ fst (centerPoint b p))
+                               (s^.bottomRight)
     ]
 
 collides :: Sprite -> Sprite -> Bool
-collides sa sb 
-  | sa^.bottomRight > sb^.topLeft && sb^.bottomRight < sa^.topLeft = False
-  | otherwise = True
+collides sa sb =
+  sa^.bottomRight > sb^.topLeft && sb^.bottomRight < sa^.topLeft
+
+contains :: (Position, Position) -> Sprite -> Bool
+contains (topLeft', bottomRight') s =
+  s^.bottomRight > topLeft' && bottomRight' > s^.topLeft
 
 applyGravity :: Int -> Int -> Sprite -> Sprite
 applyGravity constant lowerBound s =
@@ -155,13 +231,17 @@ nextTick op scene@Scene{..} =
 
 drawScene :: Scene -> [Shape]
 drawScene Scene{..} =
-  [Fill 135 206 250 $ Rect (Position 0 0) (Position screenWidth screenHeight)]
+  [Fill 149 207 174 $ Rect (Position 0 0) (Position screenWidth screenHeight)]
     <> draw' background
     <> draw' stage
     <> draw character
     <> draw' foreground
   where
   draw' = concatMap draw
+        . filter inView
+
+inView :: Sprite -> Bool
+inView = contains (Position 0 0, Position 800 800)
 {-
 main = do
   {-
