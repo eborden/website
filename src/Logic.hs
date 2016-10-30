@@ -89,7 +89,6 @@ applyGravity :: Int -> Int -> Sprite -> Sprite
 applyGravity constant lowerBound s =
   case s of
     User _ _ _
-      | 0 >= s^.topRight.yp              -> s & velocity . yv %~ max 0
       | lowerBound <= s^.position.bottom -> s & velocity %~ ground
       | otherwise                        -> s & velocity %~ gravityVeloc constant
     x -> x
@@ -135,7 +134,8 @@ nextTick :: [Op] -> Scene -> Scene
 nextTick op scene@Scene{..} =
   scene { foreground = fmap (next []) $ foreground
         , character
-            = applyFriction friction
+            = bound
+            . applyFriction friction
             . applyGravity gravity screenHeight
             . next stage
             $ character & velocity %~ \xs -> foldr operationVelocity xs op
@@ -149,6 +149,9 @@ nextTick op scene@Scene{..} =
   next xs x =
     if any (==True) (fmap (collides x) xs) then x
     else advanceSprite charV x
+
+  bound s = s & position %~ over bottom (max 0)
+                          . over bottom (min screenHeight)
 
 drawScene :: Scene -> [Shape]
 drawScene Scene{..} =

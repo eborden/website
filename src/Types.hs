@@ -1,5 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE BangPatterns #-}
 module Types where
 
 import Lens.Micro
@@ -9,20 +10,22 @@ x *~ y = round $ fromIntegral x * y
 
 type Point = (Int, Int)
 type Radius = Int
-data Bounds = Bounds {width :: Int, height :: Int} deriving (Eq, Show)
-data Velocity = Velocity Int Int deriving (Eq, Show)
+
+data Bounds = Bounds {width :: !Int, height :: !Int} deriving (Eq, Show)
+
+data Velocity = Velocity !Int !Int deriving (Eq, Show)
 instance Monoid Velocity where
   mempty = Velocity 0 0
   Velocity x y `mappend` Velocity xx yy = Velocity (x + xx) (y + yy)
 
-data Position = Position Int Int deriving (Eq, Ord, Show)
+data Position = Position !Int !Int deriving (Eq, Ord, Show)
 
 data Sprite
-  = User Bounds Position Velocity
-  | Leaf Bounds Position Velocity
-  | Cloud Bounds Position Velocity
-  | Tree Bounds Position
-  | Hill Bounds Position
+  = User !Bounds !Position !Velocity
+  | Leaf !Bounds !Position !Velocity
+  | Cloud !Bounds !Position !Velocity
+  | Tree !Bounds !Position
+  | Hill !Bounds !Position
   deriving (Eq, Show)
 
 defaultCloud :: Sprite
@@ -146,9 +149,9 @@ centerPoint :: Bounds -> Position -> (Int, Int)
 centerPoint b@(Bounds _ h) (Position x y) = (x + halfWidth b, y + (h *~ 0.5))
 
 data Shape
-  = Rect Position Position
-  | RoundedRect Position Position Radius
-  | BezierCurve Position Position Position
-  | Fill Int Int Int Shape
+  = Rect !Position !Position
+  | RoundedRect !Position !Position !Radius
+  | BezierCurve !Position !Position !Position
+  | Fill !Int !Int !Int !Shape
   deriving (Show, Eq)
 
