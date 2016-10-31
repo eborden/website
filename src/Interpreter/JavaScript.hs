@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE LambdaCase #-}
 module Interpreter.JavaScript where
 
 import           Control.Monad.Trans
