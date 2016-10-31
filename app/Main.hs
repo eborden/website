@@ -1,19 +1,22 @@
+{-# LANGUAGE RecordWildCards #-}
 module Main where
 
 import Data.List (unfoldr)
 import Data.Monoid
+import Data.Maybe
 import Data.Foldable
 import Interpreter.JavaScript
 import Logic
 import Types
 import System.Random
+import Lens.Micro
 
 main :: IO ()
 main = do
   gen <- newStdGen
   gen' <- newStdGen
   gen'' <- newStdGen
-  interpret step
+  interpret step scroll
     $ Scene
       (clouds gen <> leafs gen')
       defaultUser
@@ -24,6 +27,7 @@ main = do
   step x op =
     let n = nextTick (toList op) x
     in (n, drawScene x)
+  scroll Scene{..} = negate . round . fromJust $ character^?velocity.xv
   clouds = take 10 . unfoldr (Just . randomCloud)
   hills = take 15 . unfoldr (Just . randomHill)
   trees = take 30 . unfoldr (Just . randomTree)

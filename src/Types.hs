@@ -46,7 +46,7 @@ data Sprite
 
 randomCloud :: StdGen -> (Sprite, StdGen)
 randomCloud g =
-  let (x, g') = randomR (0, 3600) g
+  let (x, g') = randomR (0, 2400) g
       (y, g'') = randomR (40, 400) g'
       (w, g''') = randomR (100, 200) g''
       (h, g'''') = randomR (10, 40) g'''
@@ -58,7 +58,7 @@ randomCloud g =
 
 randomHill :: StdGen -> (Sprite, StdGen)
 randomHill g =
-  let (x, g') = randomR (0, 3600) g
+  let (x, g') = randomR (0, 2400) g
       (w, g'') = randomR (300, 500) g'
       (c, g''') = randomColor g''
       (h, newGen) = randomR (20, 120) g'''
@@ -68,7 +68,7 @@ randomHill g =
 
 randomTree :: StdGen -> (Sprite, StdGen)
 randomTree g =
-  let (x, g') = randomR (0, 3600) g
+  let (x, g') = randomR (0, 2400) g
       (w, g'') = randomR (30, 50) g'
       (h, g''') = randomR (100, 120) g''
       (c, newGen) = randomColor g'''
@@ -81,7 +81,7 @@ defaultUser = User (Bounds 24 30) (Position 400 0) mempty
 
 randomLeaf :: StdGen -> (Sprite, StdGen)
 randomLeaf g =
-  let (x, g') = randomR (0, 3600) g
+  let (x, g') = randomR (0, 2400) g
       (y, g'') = randomR (600, 790) g'
       (c, g''') = randomColor g''
       (vx, g'''') = randomR (-0.4, -1) g'''

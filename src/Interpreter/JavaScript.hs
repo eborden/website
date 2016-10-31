@@ -5,6 +5,7 @@ import           Control.Monad.Trans
 import           Control.Monad (void, when)
 import           Data.IORef
 import           Data.Foldable
+import           Data.Monoid
 import           Data.Set (Set)
 import qualified Data.Set as Set
 import           GHCJS.Marshal
@@ -12,20 +13,27 @@ import           GHCJS.DOM.Types hiding (Rect)
 import           GHCJS.DOM (currentDocument)
 import           GHCJS.DOM.JSFFI.Generated.Enums
 import           GHCJS.DOM.Node (appendChild)
-import           GHCJS.DOM.Element (setAttribute)
+import           GHCJS.DOM.Element (setAttribute, getAttribute, getStyle)
 import           GHCJS.DOM.EventM (on, uiKeyCode)
 import           GHCJS.DOM.Document (querySelector, keyUp, keyDown, createElement)
 import           GHCJS.DOM.HTMLCanvasElement
 import           GHCJS.DOM.CanvasRenderingContext2D
 import           JavaScript.Web.AnimationFrame
 import           Lens.Micro
+import           Text.Read
 import           Types
 import           Logic (Op(..))
 
-interpret :: Show a => (a -> Set Op -> (a, [Shape])) -> a -> IO ()
-interpret render seed = do
+interpret
+  :: Show a
+  => (a -> Set Op -> (a, [Shape]))
+  -> (a -> Int)
+  -> a
+  -> IO ()
+interpret render scroll seed = do
   Just doc <- currentDocument
   Just body <- querySelector doc "body"
+  Just frame <- querySelector doc "#content"
   ops <- newIORef mempty
   void $ initListener doc ops
 
@@ -33,6 +41,7 @@ interpret render seed = do
   setAttribute canvasOff "style" "display:none"
 
   canvasOn <- createCanvas doc
+  setAttribute canvasOn "id" "landscape"
 
   void . appendChild body . Just $ toElement canvasOff
   void . appendChild body . Just $ toElement canvasOn
@@ -46,9 +55,22 @@ interpret render seed = do
         when (last /= shapes) $ do
           forM_ shapes $ interpretShape ctxOff
           drawImageFromCanvas ctxOn (Just canvasOff) 0 0
+          updateScroll frame $ scroll state
         void $ waitForAnimationFrame
         go shapes newState
   go [] seed
+
+-- There is definitily a better way to set styles...
+updateScroll :: Element -> Int -> IO ()
+updateScroll el i = do
+  rawStyle <- getAttribute el "style"
+  original <- case rawStyle of
+    Nothing -> pure 0
+    Just x -> do
+      case readEither . reverse . drop 2 . reverse $ drop 6 x of
+        Left _ -> pure 0
+        Right parsed -> pure parsed
+  setAttribute el "style" $ "left: " <> show (original + i) <> "px"
 
 createCanvas :: (MonadIO m, IsDocument self) => self -> m HTMLCanvasElement
 createCanvas doc = do

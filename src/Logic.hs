@@ -238,8 +238,10 @@ nextTick op scene@Scene{..} =
 
   next :: [Sprite] -> Sprite -> Sprite
   next xs x =
-    if any (==True) (fmap (collides x) xs) then x
-    else advanceSprite charV x
+    wrapAround charV (0, fromIntegral screenWidth * 3)
+      $ if any (==True) (fmap (collides x) xs)
+          then x
+          else advanceSprite charV x
 
   bound s = s & position %~ over bottom (max 0)
                           . over bottom (min (fromIntegral screenHeight))
@@ -257,6 +259,19 @@ drawScene Scene{..} =
 
 inView :: Sprite -> Bool
 inView = contains (Position 0 0, Position 800 800)
+
+wrapAround :: Velocity -> (Float, Float) -> Sprite -> Sprite
+wrapAround v (leftBound, rightBound) s
+  | velocLeft && beyondLeft = s & position.left .~ rightBound
+  | velocRight && beyondRight = s & position.right bound .~ leftBound
+  | otherwise = s
+  where
+    bound = s^.bounds
+    beyondLeft = s^.position.right bound <= leftBound
+    beyondRight = s^.position.left >= rightBound
+    velocLeft = v^.xv >= 0
+    velocRight = v^.xv < 0
+
 {-
 main = do
   {-

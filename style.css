@@ -1,0 +1,41 @@
+/* tree colors: 
+*  brown:  B86821 
+*  yellow:  F3D30C 
+*  red:  E1512C 
+*  green:   507A3A
+*  stump:  897723
+*  sky:  95CFAE
+*/
+canvas,
+#frame,
+#content{position:absolute; top: 0; left: 0;}
+canvas{pointer-events: none}
+#frame{overflow: hidden; width: 800px; height: 100%; z-index: 1;}
+#content{height: 100%; width: 300%;}
+#content article{float: left; width: 800px; height: 100%}
+body{font-family: helvetica, arial, sans-serif;}
+h1, h2, h3, p, ul{display: block; font-family: inherit; color: #666; width: 50%; margin: 0 auto;}
+h1{font-size: 2em; text-transform: uppercase; text-align:center;}
+h2{font-size: 1.4em; text-transform: uppercase; text-align:center;}
+h3{font-size: 1em; text-transform: uppercase; text-align: center;}
+a, a:link, a:active, a:visited{color: #E1512C; text-decoration: none; font-weight: 700;}
+a:hover{color: #F3D30C;}
+p{font-size: 1em;margin-top: .3em; margin-bottom: .9em; clear: both;}
+p.msg{padding: 1em; background: #507A3A; color: #fff; border-radius: 1em;}
+p.center{text-align: center}
+p label{display: block;}
+p input,
+p textarea{width: 96%; border: 2px solid #666; padding: 2%; border-radius: 0.5em; font-size: .9em; font-family: inherit; }
+p input:focus,
+p textarea:focus{outline: 0; border-color: #F3D30C; background: #fefefe;}
+p button{background: #666; border-radius: 0.3em; color: #fff; border: 2px solid #555; font-size: 1.2em; text-transform: uppercase;}
+p button:focus,
+p button:hover{background:#F3D30C; cursor: pointer; outline: 0;}
+ul{list-style: none; margin: 0; padding: 0;}
+ul li{border-left: 0.5em solid #CCC;margin: 0.5em 0;padding: 0.3em 0.5em 0.3em 0.5em;background: #EEE;}
+.box{border: 2px solid #efefef; background: #fff; width: 18em; margin: 0 auto; border-radius: 0.5em; padding: 1em;}
+.box ul, .box p {margin-left: 0; margin-right: 0; width: 100%}
+figure{display: block; margin: 0 auto; width: 150px; clear: both;}
+figure div{display: block; background: #666; height: 40px; width: 40px; float: left; margin: 5px; text-align: center; line-height: 40px; text-transform: uppercase; font-size: .7em; color: #fff;}
+figure #up{margin-left: 55px;}
+figure #left{clear: left;}
