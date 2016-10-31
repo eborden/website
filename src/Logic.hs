@@ -208,11 +208,11 @@ operationVelocity op v =
     LeftOp ->  v & xv %~ max (-12) . subtract 2
     NoOp -> v
 
-leafJitter :: Sprite -> Sprite
-leafJitter s = case s of
+leafJitter :: Float -> Sprite -> Sprite
+leafJitter lower s = case s of
   Leaf b p c (Velocity x y)
-    | s^.position.yp <= 600 -> Leaf b p c . Velocity x $ negate y
-    | s^.position.yp >= 800 -> Leaf b p c . Velocity x $ negate y
+    | s^.position.yp <= (lower - 200) -> Leaf b p c . Velocity x $ negate y
+    | s^.position.yp >= lower -> Leaf b p c . Velocity x $ negate y
     | otherwise -> s
   _ -> s
 
@@ -223,7 +223,7 @@ randomNegate g =
 
 nextTick :: [Op] -> Scene -> Scene
 nextTick op scene@Scene{..} =
-  scene { foreground = fmap (next [] . leafJitter) $ foreground
+  scene { foreground = fmap (next [] . leafJitter (fromIntegral screenHeight)) $ foreground
         , character
             = bound
             . applyFriction friction
@@ -247,7 +247,7 @@ nextTick op scene@Scene{..} =
                           . over bottom (min (fromIntegral screenHeight))
 
 drawScene :: Scene -> [Shape]
-drawScene Scene{..} =
+drawScene scene@Scene{..} =
   [Fill 149 207 174 $ Rect (Position 0 0) (Position (fromIntegral screenWidth) (fromIntegral screenHeight))]
     <> draw' background
     <> draw' stage
@@ -255,10 +255,10 @@ drawScene Scene{..} =
     <> draw' foreground
   where
   draw' = concatMap draw
-        . filter inView
+        . filter (inView scene)
 
-inView :: Sprite -> Bool
-inView = contains (Position 0 0, Position 800 800)
+inView :: Scene -> Sprite -> Bool
+inView Scene{..} = contains (Position 0 0, Position (fromIntegral screenWidth) (fromIntegral screenHeight))
 
 wrapAround :: Velocity -> (Float, Float) -> Sprite -> Sprite
 wrapAround v (leftBound, rightBound) s

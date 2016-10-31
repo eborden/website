@@ -5,17 +5,23 @@ import           Control.Monad.Trans
 import           Control.Monad (void, when)
 import           Data.IORef
 import           Data.Foldable
+import           Data.Maybe (catMaybes, fromJust)
 import           Data.Monoid
 import           Data.Set (Set)
 import qualified Data.Set as Set
 import           GHCJS.Marshal
 import           GHCJS.DOM.Types hiding (Rect)
-import           GHCJS.DOM (currentDocument)
+import           GHCJS.DOM (currentDocument, currentWindow)
 import           GHCJS.DOM.JSFFI.Generated.Enums
 import           GHCJS.DOM.Node (appendChild)
-import           GHCJS.DOM.Element (setAttribute, getAttribute, getStyle)
-import           GHCJS.DOM.EventM (on, uiKeyCode)
-import           GHCJS.DOM.Document (querySelector, keyUp, keyDown, createElement)
+import qualified GHCJS.DOM.TouchEvent as Touch
+import qualified GHCJS.DOM.TouchList as Touch
+import qualified GHCJS.DOM.Touch as Touch
+import           GHCJS.DOM.NodeList (item, getLength)
+import           GHCJS.DOM.Element (setAttribute, getAttribute)
+import           GHCJS.DOM.EventM (on, uiKeyCode, mouseClientX, mouseClientY, EventM, event)
+import           GHCJS.DOM.Window (getInnerWidth, getInnerHeight)
+import           GHCJS.DOM.Document (querySelector, querySelectorAll, keyUp, keyDown, mouseDown, mouseUp, touchStart, touchMove, touchEnd, createElement)
 import           GHCJS.DOM.HTMLCanvasElement
 import           GHCJS.DOM.CanvasRenderingContext2D
 import           JavaScript.Web.AnimationFrame
@@ -24,16 +30,24 @@ import           Text.Read
 import           Types
 import           Logic (Op(..))
 
+getSize :: IO (Int, Int)
+getSize = do
+  Just window <- currentWindow
+  (,) <$> getInnerWidth window <*> getInnerHeight window
+
 interpret
   :: Show a
   => (a -> Set Op -> (a, [Shape]))
   -> (a -> Int)
+  -> ((Int, Int) -> a -> a)
   -> a
   -> IO ()
-interpret render scroll seed = do
+interpret render scroll setSize seed = do
   Just doc <- currentDocument
   Just body <- querySelector doc "body"
-  Just frame <- querySelector doc "#content"
+  Just frame <- querySelector doc "#frame"
+  Just content <- querySelector doc "#content"
+  Just articles <- traverse nodeListToList =<< querySelectorAll doc "#content article"
   ops <- newIORef mempty
   void $ initListener doc ops
 
@@ -49,16 +63,32 @@ interpret render scroll seed = do
   ctxOff <- CanvasRenderingContext2D <$> getContext canvasOff "2d"
   ctxOn <- CanvasRenderingContext2D <$> getContext canvasOn "2d"
 
-  let go last state = do
+  let go lastSize last state = do
         currentOps <- readIORef ops
-        let (newState, shapes) = render state currentOps
+
+        size <- getSize
+
+        updateScroll content $ scroll state
+
+        let (newState, shapes) = render (setSize size state) currentOps
+
+        when (lastSize /= size) $ do
+          mapM_ (resizeCanvas $ size) [canvasOn, canvasOff]
+          forM_ (frame:articles)
+            $ \el -> setAttribute el "style" $ "width: " <> (show . fst $ size) <> "px"
+
         when (last /= shapes) $ do
           forM_ shapes $ interpretShape ctxOff
           drawImageFromCanvas ctxOn (Just canvasOff) 0 0
-          updateScroll frame $ scroll state
+
         void $ waitForAnimationFrame
-        go shapes newState
-  go [] seed
+        go size shapes newState
+  go (0, 0) [] seed
+
+nodeListToList :: MonadIO m => NodeList -> m [Element]
+nodeListToList nl = do
+  l <- getLength nl
+  fmap (Element . unNode) . catMaybes <$> mapM (item nl) [0..l - 1]
 
 -- There is definitily a better way to set styles...
 updateScroll :: Element -> Int -> IO ()
@@ -75,9 +105,11 @@ updateScroll el i = do
 createCanvas :: (MonadIO m, IsDocument self) => self -> m HTMLCanvasElement
 createCanvas doc = do
   Just canvas <- fmap castToHTMLCanvasElement <$> createElement doc (Just "canvas")
-  setWidth canvas 800
-  setHeight canvas 800
   pure canvas
+
+resizeCanvas ::  (MonadIO m) => (Int, Int) -> HTMLCanvasElement -> m ()
+resizeCanvas (w, h) canvas =
+  setWidth canvas w >> setHeight canvas h
 
 interpretShape :: CanvasRenderingContext2D -> Shape -> IO ()
 interpretShape ctx = \case
@@ -116,11 +148,48 @@ initListener doc ref = do
     op <- keyCodeToOp <$> uiKeyCode
     forM_ op $ \x ->
       liftIO $ modifyIORef' ref $ Set.insert x
+
   cancelUp <- on doc keyUp $ do
     op <- keyCodeToOp <$> uiKeyCode
     forM_ op $ \x ->
       liftIO $ modifyIORef' ref $ Set.delete x
+
+  cancelMouseDown <- on doc mouseDown $ onClick ref
+  cancelMouseUp <- on doc mouseUp $ offClick ref
+  cancelTouchStart <- on doc touchStart $ onTouch ref
+  cancelTouchMove <- on doc touchMove $ offClick ref >> onTouch ref
+  cancelTouchEnd <- on doc touchEnd $ offClick ref
+
   pure $ cancelDown >> cancelUp
+      >> cancelMouseDown >> cancelMouseUp
+      >> cancelTouchStart >> cancelTouchMove >> cancelTouchEnd
+
+onClick :: IsMouseEvent e => IORef (Set Op) -> EventM t e ()
+onClick ref = do
+  dim <- (,) <$> mouseClientX <*> mouseClientY
+  calcDirection ref dim
+
+onTouch :: IORef (Set Op) -> EventM t TouchEvent ()
+onTouch ref = do
+  Just t <- flip Touch.item 0 . fromJust =<< Touch.getTouches =<< event
+  x <- Touch.getClientX t
+  y <- Touch.getClientY t
+  calcDirection ref (x, y)
+
+calcDirection :: MonadIO m => IORef (Set Op) -> (Int, Int) -> m ()
+calcDirection ref (x, y) = do
+  (w, h) <- liftIO getSize
+  let horiz = if w `div` 2 > x
+        then LeftOp
+        else RightOp
+      vert = if h `div` 2 > y
+        then UpOp
+        else DownOp
+  liftIO $ modifyIORef' ref $ \s -> foldr Set.insert s [vert, horiz]
+
+offClick :: MonadIO m => IORef (Set Op) -> m ()
+offClick ref = liftIO $ modifyIORef' ref $ \x -> foldr Set.delete x [UpOp, LeftOp, RightOp, DownOp]
+    
 
 keyCodeToOp :: Int -> Maybe Op
 keyCodeToOp = \case

@@ -44,45 +44,52 @@ data Sprite
   | Hill !Bounds !Position RGB
   deriving (Eq, Show)
 
-randomCloud :: StdGen -> (Sprite, StdGen)
-randomCloud g =
-  let (x, g') = randomR (0, 2400) g
-      (y, g'') = randomR (40, 400) g'
-      (w, g''') = randomR (100, 200) g''
-      (h, g'''') = randomR (10, 40) g'''
+panelWidth :: Num a => Bounds -> a
+panelWidth b = fromIntegral $ width b * 3
+
+width_, height_ :: Num a => Bounds -> a
+width_ = fromIntegral . width
+height_ = fromIntegral . height
+
+randomCloud :: Bounds -> StdGen -> (Sprite, StdGen)
+randomCloud screen g =
+  let (x, g') = randomR (0, panelWidth screen) g
+      (y, g'') = randomR (height_ screen / 20, height_ screen / 2) g'
+      (w, g''') = randomR (width screen `div` 8, width screen `div` 4) g''
+      (h, g'''') = randomR (height screen `div` 80, height screen `div` 20) g'''
       (vx, newGen) = randomR (-0.1, -0.3) g''''
       b = Bounds w h
       p = Position x y
       v = Velocity vx 0
    in (Cloud b p v, newGen)
 
-randomHill :: StdGen -> (Sprite, StdGen)
-randomHill g =
-  let (x, g') = randomR (0, 2400) g
-      (w, g'') = randomR (300, 500) g'
+randomHill :: Bounds -> StdGen -> (Sprite, StdGen)
+randomHill screen g =
+  let (x, g') = randomR (0, panelWidth screen) g
+      (w, g'') = randomR ((width screen `div` 10) * 3, (width screen `div` 10) * 5) g'
       (c, g''') = randomColor g''
-      (h, newGen) = randomR (20, 120) g'''
+      (h, newGen) = randomR ((height screen `div` 80) * 2, (height screen `div` 80) * 12) g'''
       b = Bounds w h
-      p = Position x 800
+      p = Position x . fromIntegral $ height screen
    in (Hill b p c, newGen)
 
-randomTree :: StdGen -> (Sprite, StdGen)
-randomTree g =
-  let (x, g') = randomR (0, 2400) g
+randomTree :: Bounds -> StdGen -> (Sprite, StdGen)
+randomTree screen g =
+  let (x, g') = randomR (0, panelWidth screen) g
       (w, g'') = randomR (30, 50) g'
       (h, g''') = randomR (100, 120) g''
       (c, newGen) = randomColor g'''
       b = Bounds w h
-      p = Position x 800
+      p = Position x . fromIntegral $ height screen
    in (Tree b p c, newGen)
 
-defaultUser :: Sprite
-defaultUser = User (Bounds 24 30) (Position 400 0) mempty
+defaultUser :: Bounds -> Sprite
+defaultUser screen = User (Bounds 24 30) (Position (width_ screen / 2) 0) mempty
 
-randomLeaf :: StdGen -> (Sprite, StdGen)
-randomLeaf g =
-  let (x, g') = randomR (0, 2400) g
-      (y, g'') = randomR (600, 790) g'
+randomLeaf :: Bounds -> StdGen -> (Sprite, StdGen)
+randomLeaf screen g =
+  let (x, g') = randomR (0, panelWidth screen) g
+      (y, g'') = randomR ((height_ screen / 8) * 6, height_ screen) g'
       (c, g''') = randomColor g''
       (vx, g'''') = randomR (-0.4, -1) g'''
       (vy, newGen) = randomR (-0.2, -0.3) g''''
@@ -141,9 +148,9 @@ xv = lens (\(Velocity x _) -> x) (\(Velocity _ y) x -> Velocity x y)
 
 -- Rounded for canvas efficiency
 xp, yp :: Lens' Position Float
-xp = lens (\(Position x _) -> fromIntegral $ round x)
+xp = lens (\(Position x _) -> fromIntegral $ (round x :: Int))
           (\(Position _ y) x -> Position x y)
-yp = lens (\(Position _ y) -> fromIntegral $ round y)
+yp = lens (\(Position _ y) -> fromIntegral $ (round y :: Int))
           (\(Position x _) y -> Position x y)
 
 left :: Lens' Position Float
