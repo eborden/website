@@ -156,7 +156,9 @@ draw s = case s of
 
 collides :: Sprite -> Sprite -> Bool
 collides sa sb =
-  sa^.bottomRight > sb^.topLeft && sb^.bottomRight < sa^.topLeft
+  sb^.bottomRight > sa^.topLeft
+  && sa^.bottomRight > sb^.topLeft
+  && sa^.position.bottom > sb^.topLeft.yp
 
 contains :: (Position, Position) -> Sprite -> Bool
 contains (topLeft', bottomRight') s =
@@ -223,24 +225,27 @@ randomNegate g =
 
 nextTick :: [Op] -> Scene -> Scene
 nextTick op scene@Scene{..} =
-  scene { foreground = fmap (next [] . leafJitter (fromIntegral screenHeight)) $ foreground
+  scene { foreground = fmap (tick . leafJitter (fromIntegral screenHeight)) $ foreground
         , character
             = bound
             . applyFriction friction
             . applyGravity gravity screenHeight
-            . next stage
-            $ character & velocity %~ \xs -> foldr operationVelocity xs op
-        , stage = fmap (next [character]) stage
-        , background = fmap (next []) background
+            . tick
+            $ if collision then character else char
+        , stage = fmap tick stage
+        , background = fmap tick background
         }
   where
   Just charV = character^?velocity
 
-  next :: [Sprite] -> Sprite -> Sprite
-  next xs x =
+  collision = any (collides character) $ stage
+  char = character & velocity %~ \xs -> foldr operationVelocity xs op
+
+  tick :: Sprite -> Sprite
+  tick x =
     wrapAround charV (0, fromIntegral screenWidth * 3)
-      $ if any (==True) (fmap (collides x) xs)
-          then x
+      $ if collision
+          then advanceSprite mempty x
           else advanceSprite charV x
 
   bound s = s & position %~ over bottom (max 0)
