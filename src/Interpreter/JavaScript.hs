@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiWayIf #-}
 module Interpreter.JavaScript where
 
 import           Control.Monad.Trans
@@ -193,12 +193,11 @@ calcDirection ref (x, y) = do
         else RightOp
       vert = if h `div` 2 > y
         then UpOp
-        else DownOp
+        else NoOp
   liftIO $ modifyIORef' ref $ \s -> foldr Set.insert s [vert, horiz]
 
 offClick :: MonadIO m => IORef (Set Op) -> m ()
 offClick ref = liftIO $ modifyIORef' ref $ \x -> foldr Set.delete x [UpOp, LeftOp, RightOp, DownOp]
-    
 
 keyCodeToOp :: Int -> Maybe Op
 keyCodeToOp = \case
