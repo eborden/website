@@ -7,6 +7,7 @@ module Logic
 import Data.Monoid
 import Lens.Micro
 import Types
+import System.Random
 
 data Op
   = UpOp
@@ -24,15 +25,15 @@ data Scene
   , background   :: [Sprite]
   , screenHeight :: Int
   , screenWidth  :: Int
-  , gravity      :: Int
-  , friction     :: Int
+  , gravity      :: Float
+  , friction     :: Float
   } deriving (Show, Eq)
 
-addHeight :: Sprite -> Float -> Int -> Int
-addHeight s m y = ((s^.bounds&height) *~ m) + y
+addHeight :: Sprite -> Float -> Float -> Float
+addHeight s m y = (fromIntegral (s^.bounds&height) * m) + y
 
-addWidth :: Sprite -> Float -> Int -> Int
-addWidth s m x = ((s^.bounds&width) *~ m) + x
+addWidth :: Sprite -> Float -> Float -> Float
+addWidth s m x = (fromIntegral (s^.bounds&width) * m) + x
 
 draw :: Sprite -> [Shape]
 draw s = case s of
@@ -54,20 +55,20 @@ draw s = case s of
       , Fill 102 88 73
       $ RoundedRect
           (s^.topLeft)
-          (s^.topRight & top b %~ addHeight s 0.333)
+          (s^.topRight & top b %~ addHeight s 0.4)
           3
       , Fill 219 183 132
       $ RoundedRect
           (s^.topLeft & top b %~ addHeight s 0.1
                       & left %~ addWidth s 0.1)
-          (s^.topRight & top b %~ addHeight s 0.333
+          (s^.topRight & top b %~ addHeight s 0.4
                        & right b %~ addWidth s (-0.1))
           3
       , Fill 102 88 73
       $ RoundedRect
-          (s^.topLeft & top b %~ addHeight s 0.333
-                      & left %~ addWidth s 0.1)
-          (s^.bottomRight & right b %~ addWidth s (-0.1))
+          (s^.topLeft & top b %~ addHeight s 0.4
+                      & left %~ addWidth s 0.2)
+          (s^.bottomRight & right b %~ addWidth s (-0.2))
           6
       ]
     -- right
@@ -82,19 +83,19 @@ draw s = case s of
       , Fill 102 88 73
       $ RoundedRect
           (s^.topLeft)
-          (s^.topRight & top b %~ addHeight s 0.333)
+          (s^.topRight & top b %~ addHeight s 0.4)
           3
       , Fill 219 183 132
       $ RoundedRect
           (s^.topLeft & top b %~ addHeight s 0.1
                       & left %~ addWidth s 0.3)
-          (s^.topRight & top b %~ addHeight s 0.333)
+          (s^.topRight & top b %~ addHeight s 0.4)
           3
       , Fill 102 88 73
       $ RoundedRect
-          (s^.topLeft & top b %~ addHeight s 0.333
-                      & left %~ addWidth s 0.1)
-          (s^.bottomRight & right b %~ addWidth s (-0.1))
+          (s^.topLeft & top b %~ addHeight s 0.4
+                      & left %~ addWidth s 0.2)
+          (s^.bottomRight & right b %~ addWidth s (-0.2))
           6
       ]
     -- left
@@ -109,19 +110,19 @@ draw s = case s of
       , Fill 102 88 73
       $ RoundedRect
           (s^.topLeft)
-          (s^.topRight & top b %~ addHeight s 0.333)
+          (s^.topRight & top b %~ addHeight s 0.4)
           3
       , Fill 219 183 132
       $ RoundedRect
           (s^.topLeft & top b %~ addHeight s 0.1)
-          (s^.topRight & top b %~ addHeight s 0.333
+          (s^.topRight & top b %~ addHeight s 0.4
                        & right b %~ addWidth s (-0.3))
           3
       , Fill 102 88 73
       $ RoundedRect
-          (s^.topLeft & top b %~ addHeight s 0.333
-                      & left %~ addWidth s 0.1)
-          (s^.bottomRight & right b %~ addWidth s (-0.1))
+          (s^.topLeft & top b %~ addHeight s 0.4
+                      & left %~ addWidth s 0.2)
+          (s^.bottomRight & right b %~ addWidth s (-0.2))
           6
       ]
 
@@ -161,18 +162,19 @@ contains :: (Position, Position) -> Sprite -> Bool
 contains (topLeft', bottomRight') s =
   s^.bottomRight > topLeft' && bottomRight' > s^.topLeft
 
-applyGravity :: Int -> Int -> Sprite -> Sprite
+applyGravity :: Float -> Int -> Sprite -> Sprite
 applyGravity constant lowerBound s =
   case s of
     User _ _ _
-      | lowerBound <= s^.position.bottom -> s & velocity %~ ground
-      | otherwise                        -> s & velocity %~ gravityVeloc constant
+      | fromIntegral lowerBound <= s^.position.bottom
+          -> s & velocity %~ ground
+      | otherwise -> s & velocity %~ gravityVeloc constant
     x -> x
 
-gravityVeloc :: Int -> Velocity -> Velocity
+gravityVeloc :: Float -> Velocity -> Velocity
 gravityVeloc constant v = v & yv %~ min 20 . (+ constant)
 
-applyFriction :: Int -> Sprite -> Sprite
+applyFriction :: Float -> Sprite -> Sprite
 applyFriction constant s = case s of
   User _ _ _ -> s & velocity . xv %~ frict
   x -> x
@@ -206,9 +208,22 @@ operationVelocity op v =
     LeftOp ->  v & xv %~ max (-12) . subtract 2
     NoOp -> v
 
+leafJitter :: Sprite -> Sprite
+leafJitter s = case s of
+  Leaf b p c (Velocity x y)
+    | s^.position.yp <= 600 -> Leaf b p c . Velocity x $ negate y
+    | s^.position.yp >= 800 -> Leaf b p c . Velocity x $ negate y
+    | otherwise -> s
+  _ -> s
+
+randomNegate :: Num i => StdGen -> (i -> i, StdGen)
+randomNegate g =
+  let (x, newG) = randomR (False, True) g
+  in (if x then id else negate, newG)
+
 nextTick :: [Op] -> Scene -> Scene
 nextTick op scene@Scene{..} =
-  scene { foreground = fmap (next []) $ foreground
+  scene { foreground = fmap (next [] . leafJitter) $ foreground
         , character
             = bound
             . applyFriction friction
@@ -227,11 +242,11 @@ nextTick op scene@Scene{..} =
     else advanceSprite charV x
 
   bound s = s & position %~ over bottom (max 0)
-                          . over bottom (min screenHeight)
+                          . over bottom (min (fromIntegral screenHeight))
 
 drawScene :: Scene -> [Shape]
 drawScene Scene{..} =
-  [Fill 149 207 174 $ Rect (Position 0 0) (Position screenWidth screenHeight)]
+  [Fill 149 207 174 $ Rect (Position 0 0) (Position (fromIntegral screenWidth) (fromIntegral screenHeight))]
     <> draw' background
     <> draw' stage
     <> draw character

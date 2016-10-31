@@ -14,12 +14,12 @@ type Radius = Int
 
 data Bounds = Bounds {width :: !Int, height :: !Int} deriving (Eq, Show)
 
-data Velocity = Velocity !Int !Int deriving (Eq, Show)
+data Velocity = Velocity !Float !Float deriving (Eq, Show)
 instance Monoid Velocity where
   mempty = Velocity 0 0
   Velocity x y `mappend` Velocity xx yy = Velocity (x + xx) (y + yy)
 
-data Position = Position !Int !Int deriving (Eq, Ord, Show)
+data Position = Position !Float !Float deriving (Eq, Ord, Show)
 
 type RGB = (Int, Int, Int)
 
@@ -49,8 +49,8 @@ randomCloud g =
   let (x, g') = randomR (0, 3600) g
       (y, g'') = randomR (40, 400) g'
       (w, g''') = randomR (100, 200) g''
-      (h, g'''') = randomR (20, 40) g'''
-      (vx, newGen) = randomR (-1, -2) g''''
+      (h, g'''') = randomR (10, 40) g'''
+      (vx, newGen) = randomR (-0.1, -0.3) g''''
       b = Bounds w h
       p = Position x y
       v = Velocity vx 0
@@ -61,7 +61,7 @@ randomHill g =
   let (x, g') = randomR (0, 3600) g
       (w, g'') = randomR (300, 500) g'
       (c, g''') = randomColor g''
-      (h, newGen) = randomR (70, 100) g'''
+      (h, newGen) = randomR (20, 120) g'''
       b = Bounds w h
       p = Position x 800
    in (Hill b p c, newGen)
@@ -69,7 +69,7 @@ randomHill g =
 randomTree :: StdGen -> (Sprite, StdGen)
 randomTree g =
   let (x, g') = randomR (0, 3600) g
-      (w, g'') = randomR (30, 40) g'
+      (w, g'') = randomR (30, 50) g'
       (h, g''') = randomR (100, 120) g''
       (c, newGen) = randomColor g'''
       b = Bounds w h
@@ -77,17 +77,18 @@ randomTree g =
    in (Tree b p c, newGen)
 
 defaultUser :: Sprite
-defaultUser = User (Bounds 24 30) (Position 100 100) mempty
+defaultUser = User (Bounds 24 30) (Position 400 0) mempty
 
 randomLeaf :: StdGen -> (Sprite, StdGen)
 randomLeaf g =
   let (x, g') = randomR (0, 3600) g
       (y, g'') = randomR (600, 790) g'
       (c, g''') = randomColor g''
-      (vx, newGen) = randomR (-1, -2) g'''
+      (vx, g'''') = randomR (-0.4, -1) g'''
+      (vy, newGen) = randomR (-0.2, -0.3) g''''
       b = Bounds 5 5
       p = Position x y
-      v = Velocity vx 0
+      v = Velocity vx vy
    in (Leaf b p c v, newGen)
 
 bounds :: Lens' Sprite Bounds
@@ -132,38 +133,39 @@ velocity f s = update s
     Tree b p c   -> pure $ Tree b p c
     Hill b p c   -> pure $ Hill b p c
 
-yv :: Lens' Velocity Int
+yv :: Lens' Velocity Float
 yv = lens (\(Velocity _ y) -> y) (\(Velocity x _) y -> Velocity x y)
 
-xv :: Lens' Velocity Int
+xv :: Lens' Velocity Float
 xv = lens (\(Velocity x _) -> x) (\(Velocity _ y) x -> Velocity x y)
 
-xp :: Lens' Position Float
-xp = lens (\(Position x _) -> fromIntegral x) (\(Position _ y) x -> Position (floor x) y)
+-- Rounded for canvas efficiency
+xp, yp :: Lens' Position Float
+xp = lens (\(Position x _) -> fromIntegral $ round x)
+          (\(Position _ y) x -> Position x y)
+yp = lens (\(Position _ y) -> fromIntegral $ round y)
+          (\(Position x _) y -> Position x y)
 
-yp :: Lens' Position Float
-yp = lens (\(Position _ y) -> fromIntegral y) (\(Position x _) y -> Position x (floor y))
-
-left :: Lens' Position Int
+left :: Lens' Position Float
 left = lens (\(Position l _) -> l) (\(Position _ b) l -> Position l b)
 
-right :: Bounds -> Lens' Position Int
+right :: Bounds -> Lens' Position Float
 right (Bounds w _) = lens get' set'
   where
-  get' p = p^.left + w
-  set' p s = p & left .~ (s - w)
+  get' p = p^.left + fromIntegral w
+  set' p s = p & left .~ (s - fromIntegral w)
 
-bottom :: Lens' Position Int
+bottom :: Lens' Position Float
 bottom = lens get' set'
   where
   get' (Position _ b) = b
   set' (Position l _) b = Position l b
 
-top :: Bounds -> Lens' Position Int
+top :: Bounds -> Lens' Position Float
 top (Bounds _ h) = lens get' set'
   where
-  get' p = p^.bottom - h
-  set' p s = p & bottom .~ (s + h)
+  get' p = p^.bottom - fromIntegral h
+  set' p s = p & bottom .~ (s + fromIntegral h)
 
 topLeft :: Lens' Sprite Position
 topLeft = lens get' set'
@@ -195,8 +197,9 @@ bottomRight = lens get' set'
 halfWidth :: Bounds -> Int
 halfWidth (Bounds w _) = w *~ 0.5
 
-centerPoint :: Bounds -> Position -> (Int, Int)
-centerPoint b@(Bounds _ h) (Position x y) = (x + halfWidth b, y + (h *~ 0.5))
+centerPoint :: Bounds -> Position -> (Float, Float)
+centerPoint b@(Bounds _ h) (Position x y) =
+  (x + fromIntegral (halfWidth b), y + (fromIntegral h * 0.5))
 
 data Shape
   = Rect !Position !Position

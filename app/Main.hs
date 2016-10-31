@@ -19,7 +19,7 @@ main = do
       defaultUser
       []
       (clouds gen' <> hills gen'' <> trees gen)
-      800 800 1 1
+      800 800 0.3 1
   where
   step x op =
     let n = nextTick (toList op) x
