@@ -10,7 +10,7 @@ canvas,
 #frame,
 #content{position:absolute; top: 0; left: 0;}
 canvas{pointer-events: none}
-#frame{overflow: hidden; width: 800px; height: 100%; z-index: 1;}
+#frame{overflow: hidden; width: 800px; height: 100%; z-index: 1; -webkit-transform: translateZ(0);}
 #content{height: 100%; width: 300%;}
 #content article{float: left; width: 800px; height: 100%}
 body{font-family: helvetica, arial, sans-serif;}
