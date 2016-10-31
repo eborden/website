@@ -74,8 +74,9 @@ interpret render scroll setSize seed = do
 
         when (lastSize /= size) $ do
           mapM_ (resizeCanvas $ size) [canvasOn, canvasOff]
-          forM_ (frame:articles)
-            $ \el -> setAttribute el "style" $ "width: " <> (show . fst $ size) <> "px; height: " <> (show . snd $ size) <> "px;"
+          setAttribute frame "style" $ widthHeightCSS size
+          forM_ articles
+            $ \el -> setAttribute el "style" $ widthHeightCSS size <> marginCSS (snd size)
 
         when (last /= shapes) $ do
           forM_ shapes $ interpretShape ctxOff
@@ -84,6 +85,14 @@ interpret render scroll setSize seed = do
         void $ waitForAnimationFrame
         go size shapes newState
   go (0, 0) [] seed
+
+widthHeightCSS :: (Int, Int) -> String
+widthHeightCSS (w, h) = 
+     "width: " <> show w <> "px;"
+  <> "height: " <> show h <> "px;"
+
+marginCSS :: Int -> String
+marginCSS h = "margin-top: " <> show (h `div` 6) <> "px;"
 
 nodeListToList :: MonadIO m => NodeList -> m [Element]
 nodeListToList nl = do
