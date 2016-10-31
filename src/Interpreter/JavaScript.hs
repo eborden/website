@@ -75,7 +75,7 @@ interpret render scroll setSize seed = do
         when (lastSize /= size) $ do
           mapM_ (resizeCanvas $ size) [canvasOn, canvasOff]
           forM_ (frame:articles)
-            $ \el -> setAttribute el "style" $ "width: " <> (show . fst $ size) <> "px"
+            $ \el -> setAttribute el "style" $ "width: " <> (show . fst $ size) <> "px; height: " <> (show . snd $ size) <> "px;"
 
         when (last /= shapes) $ do
           forM_ shapes $ interpretShape ctxOff
