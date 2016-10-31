@@ -22,13 +22,13 @@ main = do
       defaultUser
       []
       (clouds gen' <> hills gen'' <> trees gen)
-      800 800 0.3 1
+      800 800 0.3 0.4
   where
   step x op =
     let n = nextTick (toList op) x
     in (n, drawScene x)
   scroll Scene{..} = negate . round . fromJust $ character^?velocity.xv
-  clouds = take 10 . unfoldr (Just . randomCloud)
-  hills = take 15 . unfoldr (Just . randomHill)
-  trees = take 30 . unfoldr (Just . randomTree)
+  clouds = take 5 . unfoldr (Just . randomCloud)
+  hills = take 10 . unfoldr (Just . randomHill)
+  trees = take 15 . unfoldr (Just . randomTree)
   leafs = take 30 . unfoldr (Just . randomLeaf)
