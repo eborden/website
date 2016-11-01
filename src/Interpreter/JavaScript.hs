@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module Interpreter.JavaScript where
+module Interpreter.JavaScript (interpret, getSize) where
 
 import           Control.Monad.Trans
 import           Control.Monad (void, when)
