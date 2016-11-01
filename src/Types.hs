@@ -21,14 +21,14 @@ instance Monoid Velocity where
 
 data Position = Position !Float !Float deriving (Eq, Ord, Show)
 
-type RGB = (Int, Int, Int)
+data RGB = RGB !Int !Int !Int deriving (Eq, Ord, Show)
 
 colors :: [RGB]
 colors =
-  [ (243, 211, 12)
-  , (88, 134, 64)
-  , (225, 81, 44)
-  , (184, 104, 33)
+  [ RGB 243 211 12
+  , RGB 88 134 64
+  , RGB 225 81 44
+  , RGB 184 104 33
   ]
 
 randomColor :: StdGen -> (RGB, StdGen)
@@ -38,10 +38,10 @@ randomColor g =
 
 data Sprite
   = User !Bounds !Position !Velocity
-  | Leaf !Bounds !Position RGB !Velocity
+  | Leaf !Bounds !Position !RGB !Velocity
   | Cloud !Bounds !Position !Velocity
-  | Tree !Bounds !Position RGB
-  | Hill !Bounds !Position RGB
+  | Tree !Bounds !Position !RGB
+  | Hill !Bounds !Position !RGB
   deriving (Eq, Show)
 
 panelWidth :: Num a => Bounds -> a

@@ -1,13 +1,15 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 module Logic
-  (module Logic, defaultUser
+  ( Op(..)
+  , Scene(..)
+  , drawScene
+  , nextTick
   ) where
 
 import Data.Monoid
 import Lens.Micro
 import Types
-import System.Random
 
 data Op
   = UpOp
@@ -126,7 +128,7 @@ draw s = case s of
           6
       ]
 
-  Leaf _ _ (r, g, b) _ ->
+  Leaf _ _ (RGB r g b) _ ->
     [ Fill r g b $ RoundedRect (s^.topLeft) (s^.bottomRight) 10 ]
 
   Cloud b _ _ ->
@@ -139,7 +141,7 @@ draw s = case s of
                     10
       ]
 
-  Tree b _ (r, g, b') ->
+  Tree b _ (RGB r g b') ->
     [ Fill 139 69 19 $ RoundedRect (s^.topLeft & left %~ addWidth s 0.333)
                           (s^.bottomRight & right b %~ addWidth s (-0.3333))
                           0
@@ -148,7 +150,7 @@ draw s = case s of
                                 10
     ]
 
-  Hill b p (r, g, b') ->
+  Hill b p (RGB r g b') ->
     [ Fill r g b' $ BezierCurve (s^.bottomLeft)
                                (s^.topLeft & left .~ fst (centerPoint b p))
                                (s^.bottomRight)
@@ -217,11 +219,6 @@ leafJitter lower s = case s of
     | s^.position.yp >= lower -> Leaf b p c . Velocity x $ negate y
     | otherwise -> s
   _ -> s
-
-randomNegate :: Num i => StdGen -> (i -> i, StdGen)
-randomNegate g =
-  let (x, newG) = randomR (False, True) g
-  in (if x then id else negate, newG)
 
 nextTick :: [Op] -> Scene -> Scene
 nextTick op scene@Scene{..} =
