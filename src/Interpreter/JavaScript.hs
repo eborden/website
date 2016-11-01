@@ -60,10 +60,9 @@ interpret render scroll setSize seed = do
   void . appendChild body . Just $ toElement canvasOff
   void . appendChild body . Just $ toElement canvasOn
 
-  ctxOff <- CanvasRenderingContext2D <$> getContext canvasOff "2d"
   ctxOn <- CanvasRenderingContext2D <$> getContext canvasOn "2d"
 
-  let go lastSize last state = do
+  let go lastSize previous state = do
         currentOps <- readIORef ops
 
         size <- getSize
@@ -78,9 +77,9 @@ interpret render scroll setSize seed = do
           forM_ articles
             $ \el -> setAttribute el "style" $ widthHeightCSS size <> marginCSS (snd size)
 
-        when (last /= shapes) $ do
-          forM_ shapes $ interpretShape ctxOff
-          drawImageFromCanvas ctxOn (Just canvasOff) 0 0
+        when (previous /= shapes) $ do
+          clearRect ctxOn 0 0 (fromIntegral $ fst size) (fromIntegral $ snd size)
+          forM_ shapes $ interpretShape ctxOn
 
         void $ waitForAnimationFrame
         go size shapes newState

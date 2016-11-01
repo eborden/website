@@ -250,8 +250,7 @@ nextTick op scene@Scene{..} =
 
 drawScene :: Scene -> [Shape]
 drawScene scene@Scene{..} =
-  [Fill 149 207 174 $ Rect (Position 0 0) (Position (fromIntegral screenWidth) (fromIntegral screenHeight))]
-    <> draw' background
+  draw' background
     <> draw' stage
     <> draw character
     <> draw' foreground
